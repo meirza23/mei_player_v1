@@ -46,9 +46,9 @@ func ShowSongs() {
 
 	for {
 		clearScreen()
-		fmt.Println("Tüm Şarkılar:\n")
+		fmt.Println("Tüm Şarkılar:")
 		for i, file := range songFiles {
-			fmt.Printf("%d. %s\n", i+1, file)
+			fmt.Printf("\n%d. %s", i+1, file)
 		}
 
 		fmt.Println("\nÇalmak için numara girin (Ana menü için 0): ")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -31,22 +32,18 @@ func downloadSong(url string, title string) {
 			return
 		}
 
-		fmt.Printf("📥 %s İndiriliyor...\n", title) // println yerine printf
+		fmt.Printf("📥 %s İndiriliyor...\n", title)
 		cmd := exec.Command("yt-dlp", "-x", "--audio-format", "mp3", url)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
-
-			os.Chdir(originalDir)
-			return
+		} else {
+			fmt.Println("✅ İndirme tamamlandı!")
+			time.Sleep(2 * time.Second) // Yeni eklenen bekleme
 		}
 
-		fmt.Println("✅ İndirme tamamlandı!")
+		os.Chdir(originalDir)
 
-		err = os.Chdir(originalDir)
-		if err != nil {
-			fmt.Println("Dizin değiştirilemedi:", err)
-		}
 	case "e":
 		originalDir, err := os.Getwd()
 		if err != nil {
@@ -54,6 +51,7 @@ func downloadSong(url string, title string) {
 			return
 		}
 
+		// Önce playlist seçimi
 		err = os.Chdir("./Playlists")
 		if err != nil {
 			fmt.Println("Dizine girilemedi:", err)
@@ -81,6 +79,7 @@ func downloadSong(url string, title string) {
 			err = os.Mkdir(filename, 0755)
 			if err != nil {
 				fmt.Println("Oluşturulamadı:", err)
+				time.Sleep(1 * time.Second)
 				return
 			}
 			targetDir = filename
@@ -90,12 +89,15 @@ func downloadSong(url string, title string) {
 
 		default:
 			fmt.Println("Geçersiz seçim!")
+			time.Sleep(1 * time.Second)
 			return
 		}
 
+		// Playlist'e indirme işlemi
 		err = os.Chdir(targetDir)
 		if err != nil {
 			fmt.Println("Playlist'e girilemedi:", err)
+			time.Sleep(1 * time.Second)
 			return
 		}
 
@@ -104,15 +106,25 @@ func downloadSong(url string, title string) {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
+			time.Sleep(2 * time.Second)
 		} else {
+			// Songs'a kopyalama
+			os.Chdir(originalDir)
+			err = os.Chdir("./Songs")
+			if err == nil {
+				input, _ := os.ReadFile(filepath.Join(originalDir, "Playlists", targetDir, title+".mp3"))
+				os.WriteFile(title+".mp3", input, 0644)
+			}
+
 			fmt.Println("✅ Playlist'e eklendi!")
+			time.Sleep(2 * time.Second) // Yeni eklenen bekleme
 		}
 
 		os.Chdir(originalDir)
+
 	default:
 		fmt.Println("❌ Geçersiz seçim! Lütfen sadece E veya H giriniz.")
 		time.Sleep(1 * time.Second)
 		return
 	}
-
 }
