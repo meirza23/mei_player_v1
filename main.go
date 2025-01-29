@@ -154,10 +154,10 @@ func main() {
 			{
 				MainSearch()
 			}
-		/*case secim == 2:
-		{
-			ShowPlaylists()
-		}*/
+		case secim == 2:
+			{
+				ShowPlaylists()
+			}
 		case secim == 3:
 			{
 				ShowSongs()
