@@ -250,12 +250,37 @@ func downloadSong(url string, title string) {
 			fmt.Println("Dizin değiştirilemedi:", err)
 		}
 	case "e":
-		err := os.Chdir("./Playlists")
+		originalDir, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Dizin alınamadı:", err)
+			return
+		}
+		err = os.Chdir("./Playlists")
 		if err != nil {
 			fmt.Println("Dizine girilemedi:", err)
 			return
 		}
 
+		fmt.Println("Yeni bir playlist oluşturmak ister misin(E/H):\n")
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+		input = strings.ToLower(input)
+		switch input {
+		case "e":
+			fmt.Println("Oluşturucağınız playlistin adını giriniz: ")
+			input, _ := reader.ReadString('\n')
+			err := os.Mkdir(input, 0755)
+			if err != nil {
+				fmt.Println("Playlist oluşturulamadı: ", err)
+				return
+			}
+			ShowPlaylists()
+		case "h":
+		}
+		err = os.Chdir(originalDir)
+		if err != nil {
+			fmt.Println("Dizin değiştirilemedi:", err)
+		}
 	default:
 		fmt.Println("❌ Geçersiz seçim! Lütfen sadece E veya H giriniz.")
 		time.Sleep(1 * time.Second)
@@ -398,6 +423,17 @@ func playLocalSong(filename string) {
 				fmt.Println("Geçersiz komut!")
 			}
 		}
+	}
+}
+func ShowPlaylists() {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Dizin alınamadı:", err)
+		return
+	}
+	err = os.Chdir(originalDir)
+	if err != nil {
+		fmt.Println("Dizin değiştirilemedi:", err)
 	}
 }
 
