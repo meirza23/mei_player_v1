@@ -186,12 +186,11 @@ func playSong(url string, title string) {
 
 	mpvProcess = cmd.Process
 
-	// Şarkı bitene kadar bekle
 	if err := cmd.Wait(); err != nil {
 		fmt.Printf("Oynatma hatası: %v\n", err)
 	}
 
-	clearScreen() // Şarkı bitince ekranı temizle
+	clearScreen()
 }
 func StopSong() {
 	if mpvProcess != nil {
