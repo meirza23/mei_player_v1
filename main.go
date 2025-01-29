@@ -127,10 +127,6 @@ func MainSearch() {
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
 
-		if input == "" {
-			continue
-		}
-
 		if input == "0" {
 			clearScreen()
 			return
