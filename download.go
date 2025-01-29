@@ -39,7 +39,7 @@ func downloadSong(url string, title string) {
 			fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
 		} else {
 			fmt.Println("✅ İndirme tamamlandı!")
-			time.Sleep(2 * time.Second) // Yeni eklenen bekleme
+			time.Sleep(2 * time.Second)
 		}
 
 		os.Chdir(originalDir)
@@ -51,7 +51,6 @@ func downloadSong(url string, title string) {
 			return
 		}
 
-		// Önce playlist seçimi
 		err = os.Chdir("./Playlists")
 		if err != nil {
 			fmt.Println("Dizine girilemedi:", err)
@@ -93,7 +92,6 @@ func downloadSong(url string, title string) {
 			return
 		}
 
-		// Playlist'e indirme işlemi
 		err = os.Chdir(targetDir)
 		if err != nil {
 			fmt.Println("Playlist'e girilemedi:", err)
@@ -108,7 +106,7 @@ func downloadSong(url string, title string) {
 			fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
 			time.Sleep(2 * time.Second)
 		} else {
-			// Songs'a kopyalama
+
 			os.Chdir(originalDir)
 			err = os.Chdir("./Songs")
 			if err == nil {
@@ -117,7 +115,7 @@ func downloadSong(url string, title string) {
 			}
 
 			fmt.Println("✅ Playlist'e eklendi!")
-			time.Sleep(2 * time.Second) // Yeni eklenen bekleme
+			time.Sleep(2 * time.Second)
 		}
 
 		os.Chdir(originalDir)
