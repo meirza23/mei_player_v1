@@ -24,7 +24,15 @@ type SearchResults struct {
 var mpvProcess *os.Process
 
 func main() {
+	directories := []string{"./Playlists", "./Songs"}
+	for _, dir := range directories {
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			fmt.Println("Klasör Oluşturulamadı!", err)
+			return
+		}
 
+	}
 	for {
 		clearScreen()
 		showMainMenu()
@@ -79,6 +87,7 @@ func showMainMenu() {
 }
 
 func MainSearch() {
+
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Aranacak şarkı: ")
 	songName, _ := reader.ReadString('\n')
@@ -124,7 +133,7 @@ func MainSearch() {
 				artistInfo,
 			)
 		}
-		fmt.Print("Seçiminiz (Çalmak için numara, İndirmek için 'd<numara>', Ana menü için 0):")
+		fmt.Print("Seçiminiz (Çalmak için numara, İndirmek için 'd<numara>', Ana menü için 0):\n")
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
 
@@ -216,13 +225,13 @@ func playSong(url string, title string) {
 			case "s":
 				clearScreen()
 				fmt.Printf("🎧 Çalınıyor: %s\n", title)
-				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'f'")
+				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'q'")
 				sendMPVCommand([]interface{}{"set_property", "pause", true})
 				fmt.Println("⏸️ Duraklatıldı")
 			case "c":
 				clearScreen()
 				fmt.Printf("🎧 Çalınıyor: %s\n", title)
-				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'f'")
+				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'q'")
 				sendMPVCommand([]interface{}{"set_property", "pause", false})
 				fmt.Println("▶️ Devam ediliyor")
 			case "q":
@@ -255,5 +264,54 @@ func sendMPVCommand(args []interface{}) {
 }
 
 func downloadSong(url string, title string) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Şarkıyı Playliste eklemek ister misiniz(E/H)? ")
+
+	input, _ := reader.ReadString('\n')
+	input = strings.ToLower(strings.TrimSpace(input))
+
+	switch input {
+	case "h":
+		originalDir, err := os.Getwd() // Mevcut dizini sakla
+		if err != nil {
+			fmt.Println("Dizin alınamadı:", err)
+			return
+		}
+
+		// Songs klasörüne geç
+		err = os.Chdir("./Songs")
+		if err != nil {
+			fmt.Println("Dizine girilemedi:", err)
+			return
+		}
+
+		fmt.Printf("📥 %s İndiriliyor...\n", title) // println yerine printf
+		cmd := exec.Command("yt-dlp", "-x", "--audio-format", "mp3", url)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
+			// Hata olsa bile dizini geri al
+			os.Chdir(originalDir)
+			return
+		}
+
+		fmt.Println("✅ İndirme tamamlandı!")
+		// İşlem bitince orijinal dizine dön
+		err = os.Chdir(originalDir)
+		if err != nil {
+			fmt.Println("Dizin değiştirilemedi:", err)
+		}
+	case "e":
+		err := os.Chdir("./Playlists")
+		if err != nil {
+			fmt.Println("Dizine girilemedi:", err)
+			return
+		}
+
+	default:
+		fmt.Println("❌ Geçersiz seçim! Lütfen sadece E veya H giriniz.")
+		time.Sleep(1 * time.Second)
+		return
+	}
 
 }
