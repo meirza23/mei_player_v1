@@ -24,7 +24,7 @@ type SearchResults struct {
 var mpvProcess *os.Process
 
 func main() {
-	directories := []string{"./Playlists", "./Songs"}
+	directories := []string{"./Playlists", "./Songs", "./Playlists/Favourites"}
 	for _, dir := range directories {
 		err := os.MkdirAll(dir, 0755)
 		if err != nil {
@@ -60,13 +60,13 @@ func main() {
 				MainSearch()
 			}
 		/*case secim == 2:
-			{
-				ShowPlaylists()
-			}
+		{
+			ShowPlaylists()
+		}*/
 		case secim == 3:
 			{
 				ShowSongs()
-			}*/
+			}
 
 		default:
 			fmt.Println("Geçersiz Seçim")
@@ -82,7 +82,7 @@ func showMainMenu() {
 	fmt.Println("0. Çıkış")
 	fmt.Println("1. Şarkı Ara")
 	fmt.Println("2. Playlistleri Görüntüle")
-	fmt.Println("3. Favorileri Görüntüle")
+	fmt.Println("3. Şarkıları Görüntüle")
 	fmt.Println("🎵 Mei Player 🎵")
 }
 
@@ -314,4 +314,23 @@ func downloadSong(url string, title string) {
 		return
 	}
 
+}
+
+func ShowSongs() {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Dizin alınamadı:", err)
+		return
+	}
+
+	err = os.Chdir("./Songs")
+	if err != nil {
+		fmt.Println("Dizine girilemedi: ", err)
+		return
+	}
+
+	err = os.Chdir(originalDir)
+	if err != nil {
+		fmt.Println("Dizin değiştirilemedi:", err)
+	}
 }
