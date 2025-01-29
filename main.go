@@ -23,57 +23,6 @@ type SearchResults struct {
 
 var mpvProcess *os.Process
 
-func main() {
-	directories := []string{"./Playlists", "./Songs", "./Playlists/Favourites"}
-	for _, dir := range directories {
-		err := os.MkdirAll(dir, 0755)
-		if err != nil {
-			fmt.Println("Klasör Oluşturulamadı!", err)
-			return
-		}
-
-	}
-	for {
-		clearScreen()
-		showMainMenu()
-		fmt.Println("\nSeçiminizi yapınız: ")
-		var secim int
-		_, err := fmt.Scanln(&secim)
-
-		if err != nil {
-			fmt.Println("Lütfen sayı girin!")
-			var discard string
-			fmt.Scanln(&discard)
-			time.Sleep(1500 * time.Millisecond)
-			clearScreen()
-			continue
-		}
-		switch {
-		case secim == 0:
-			{
-				clearScreen()
-				fmt.Println("Çıkış yapılıyor... Güle Güle 👋👋")
-				os.Exit(0)
-			}
-		case secim == 1:
-			{
-				MainSearch()
-			}
-		/*case secim == 2:
-		{
-			ShowPlaylists()
-		}*/
-		case secim == 3:
-			{
-				ShowSongs()
-			}
-
-		default:
-			fmt.Println("Geçersiz Seçim")
-		}
-
-	}
-}
 func clearScreen() {
 	fmt.Print("\033[H\033[2J")
 }
@@ -272,13 +221,12 @@ func downloadSong(url string, title string) {
 
 	switch input {
 	case "h":
-		originalDir, err := os.Getwd() // Mevcut dizini sakla
+		originalDir, err := os.Getwd()
 		if err != nil {
 			fmt.Println("Dizin alınamadı:", err)
 			return
 		}
 
-		// Songs klasörüne geç
 		err = os.Chdir("./Songs")
 		if err != nil {
 			fmt.Println("Dizine girilemedi:", err)
@@ -290,13 +238,13 @@ func downloadSong(url string, title string) {
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
-			// Hata olsa bile dizini geri al
+
 			os.Chdir(originalDir)
 			return
 		}
 
 		fmt.Println("✅ İndirme tamamlandı!")
-		// İşlem bitince orijinal dizine dön
+
 		err = os.Chdir(originalDir)
 		if err != nil {
 			fmt.Println("Dizin değiştirilemedi:", err)
@@ -328,9 +276,179 @@ func ShowSongs() {
 		fmt.Println("Dizine girilemedi: ", err)
 		return
 	}
+	defer os.Chdir(originalDir)
 
-	err = os.Chdir(originalDir)
+	files, err := os.ReadDir(".")
 	if err != nil {
-		fmt.Println("Dizin değiştirilemedi:", err)
+		fmt.Println("Dizin okunamadı: ", err)
+		return
+	}
+
+	songFiles := make([]string, 0)
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".mp3") {
+			songFiles = append(songFiles, file.Name())
+		}
+	}
+
+	if len(songFiles) == 0 {
+		fmt.Println("Kütüphanede şarkı bulunamadı!")
+		time.Sleep(2 * time.Second)
+		return
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		clearScreen()
+		fmt.Println("Tüm Şarkılar:\n")
+		for i, file := range songFiles {
+			fmt.Printf("%d. %s\n", i+1, file)
+		}
+
+		fmt.Println("\nÇalmak için numara girin (Ana menü için 0): ")
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "0" {
+			return
+		}
+
+		num, err := strconv.Atoi(input)
+		if err != nil || num < 1 || num > len(songFiles) {
+			fmt.Printf("Geçersiz seçim! (1-%d arası değer girin)\n", len(songFiles))
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		selectedSong := songFiles[num-1]
+		playLocalSong(selectedSong)
+	}
+}
+
+func playLocalSong(filename string) {
+	clearScreen()
+	fmt.Printf("🎧 Çalınıyor: %s\n", filename)
+	fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'q'")
+
+	if mpvProcess != nil {
+		mpvProcess.Kill()
+		mpvProcess = nil
+	}
+
+	// Socket dosyasını temizle
+	os.Remove("/tmp/mpv-socket")
+
+	cmd := exec.Command("mpv",
+		"--no-video",
+		"--quiet",
+		"--no-terminal",
+		"--input-ipc-server=/tmp/mpv-socket",
+		filename,
+	)
+
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("Oynatma hatası: %v\n", err)
+		return
+	}
+	mpvProcess = cmd.Process
+
+	// Socket'in hazır olmasını bekle
+	time.Sleep(1 * time.Second)
+
+	inputCh := make(chan string)
+	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		for {
+			input, _ := reader.ReadString('\n')
+			inputCh <- strings.TrimSpace(input)
+		}
+	}()
+
+	done := make(chan error)
+	go func() { done <- cmd.Wait() }()
+
+	for {
+		select {
+		case err := <-done:
+			mpvProcess = nil
+			if err != nil {
+				fmt.Printf("Hata: %v\n", err)
+			}
+			return
+		case input := <-inputCh:
+			switch input {
+			case "s":
+				clearScreen()
+				fmt.Printf("🎧 Çalınıyor: %s\n", filename)
+				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'q'")
+				sendMPVCommand([]interface{}{"set_property", "pause", true})
+				fmt.Println("⏸️ Duraklatıldı")
+			case "c":
+				clearScreen()
+				fmt.Printf("🎧 Çalınıyor: %s\n", filename)
+				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'q'")
+				sendMPVCommand([]interface{}{"set_property", "pause", false})
+				fmt.Println("▶️ Devam ediliyor")
+			case "q":
+				sendMPVCommand([]interface{}{"stop"})
+				fmt.Println("⏹️ Durduruluyor...")
+				return
+			default:
+				fmt.Println("Geçersiz komut!")
+			}
+		}
+	}
+}
+
+func main() {
+	directories := []string{"./Playlists", "./Songs", "./Playlists/Favourites"}
+	for _, dir := range directories {
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			fmt.Println("Klasör Oluşturulamadı!", err)
+			return
+		}
+
+	}
+	for {
+		clearScreen()
+		showMainMenu()
+		fmt.Println("\nSeçiminizi yapınız: ")
+		var secim int
+		_, err := fmt.Scanln(&secim)
+
+		if err != nil {
+			fmt.Println("Lütfen sayı girin!")
+			var discard string
+			fmt.Scanln(&discard)
+			time.Sleep(1500 * time.Millisecond)
+			clearScreen()
+			continue
+		}
+		switch {
+		case secim == 0:
+			{
+				clearScreen()
+				fmt.Println("Çıkış yapılıyor... Güle Güle 👋👋")
+				os.Exit(0)
+			}
+		case secim == 1:
+			{
+				MainSearch()
+			}
+		/*case secim == 2:
+		{
+			ShowPlaylists()
+		}*/
+		case secim == 3:
+			{
+				ShowSongs()
+			}
+
+		default:
+			fmt.Println("Geçersiz Seçim")
+		}
+
 	}
 }
