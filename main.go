@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -49,15 +50,11 @@ func main() {
 			{
 				MainSearch()
 			}
-		case secim == 2:
-			{
-				StopSong()
-			}
-		/*case secim == 3:
+		/*case secim == 2:
 			{
 				ShowPlaylists()
 			}
-		case secim == 4:
+		case secim == 3:
 			{
 				ShowSongs()
 			}*/
@@ -74,10 +71,9 @@ func clearScreen() {
 func showMainMenu() {
 	fmt.Println("🎵 Mei Player 🎵")
 	fmt.Println("0. Çıkış")
-	fmt.Println("1. Şarkı Oynat")
-	fmt.Println("2. Şarkıyı Duraklat")
-	fmt.Println("3. Playlistleri Görüntüle")
-	fmt.Println("4. Favorileri Görüntüle")
+	fmt.Println("1. Şarkı Ara")
+	fmt.Println("2. Playlistleri Görüntüle")
+	fmt.Println("3. Favorileri Görüntüle")
 	fmt.Println("🎵 Mei Player 🎵")
 }
 
@@ -127,9 +123,13 @@ func MainSearch() {
 				artistInfo,
 			)
 		}
-		fmt.Print("Seçiminiz (Çalmak için numara, İndirmek için 'd<numara>', Ana menü için 0): ")
+		fmt.Print("Seçiminiz (Çalmak için numara, İndirmek için 'd<numara>', Ana menü için 0):")
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
+
+		if input == "" {
+			continue
+		}
 
 		if input == "0" {
 			clearScreen()
@@ -167,34 +167,93 @@ func formatTime(seconds int) string {
 func playSong(url string, title string) {
 	clearScreen()
 	fmt.Printf("🎧 Çalınıyor: %s\n", title)
+	fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'q'")
+
 	if mpvProcess != nil {
 		mpvProcess.Kill()
+		mpvProcess = nil
 	}
 
 	cmd := exec.Command("mpv",
 		"--no-video",
 		"--ytdl-format=bestaudio",
-		"--no-terminal",
+		"--input-ipc-server=/tmp/mpv-socket",
 		"--quiet",
 		url,
 	)
+
+	// Socket dosyasını temizle
+	os.Remove("/tmp/mpv-socket")
 
 	if err := cmd.Start(); err != nil {
 		fmt.Printf("Oynatma hatası: %v\n", err)
 		return
 	}
-
 	mpvProcess = cmd.Process
 
-	if err := cmd.Wait(); err != nil {
-		fmt.Printf("Oynatma hatası: %v\n", err)
-	}
+	// Socket'in hazır olmasını bekle
+	time.Sleep(2 * time.Second)
 
-	clearScreen()
+	inputCh := make(chan string)
+	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		for {
+			input, _ := reader.ReadString('\n')
+			inputCh <- strings.TrimSpace(input)
+		}
+	}()
+
+	done := make(chan error)
+	go func() { done <- cmd.Wait() }()
+
+	for {
+		select {
+		case err := <-done:
+			mpvProcess = nil
+			if err != nil {
+				fmt.Printf("Hata: %v\n", err)
+			}
+			return
+		case input := <-inputCh:
+			switch input {
+			case "s":
+				clearScreen()
+				fmt.Printf("🎧 Çalınıyor: %s\n", title)
+				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'f'")
+				sendMPVCommand([]interface{}{"set_property", "pause", true})
+				fmt.Println("⏸️ Duraklatıldı")
+			case "c":
+				clearScreen()
+				fmt.Printf("🎧 Çalınıyor: %s\n", title)
+				fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'f'")
+				sendMPVCommand([]interface{}{"set_property", "pause", false})
+				fmt.Println("▶️ Devam ediliyor")
+			case "q":
+				sendMPVCommand([]interface{}{"stop"})
+				fmt.Println("⏹️ Durduruluyor...")
+				return
+			default:
+				fmt.Println("Geçersiz komut!")
+			}
+		}
+	}
 }
-func StopSong() {
-	if mpvProcess != nil {
-		mpvProcess.Kill()
+
+func sendMPVCommand(args []interface{}) {
+	conn, err := net.Dial("unix", "/tmp/mpv-socket")
+	if err != nil {
+		fmt.Printf("Socket bağlantı hatası: %v\n", err)
+		return
+	}
+	defer conn.Close()
+
+	cmd := map[string]interface{}{
+		"command": args,
+	}
+	jsonCmd, _ := json.Marshal(cmd)
+	_, err = conn.Write(append(jsonCmd, '\n'))
+	if err != nil {
+		fmt.Printf("Komut gönderme hatası: %v\n", err)
 	}
 }
 
