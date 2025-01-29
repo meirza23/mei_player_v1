@@ -20,6 +20,8 @@ type SearchResults struct {
 	URL string `json:"webpage_url"`
 }
 
+var mpvProcess *os.Process
+
 func main() {
 	clearScreen()
 	for {
@@ -47,11 +49,11 @@ func main() {
 			{
 				MainSearch()
 			}
-		/*case secim == 2:
+		case secim == 2:
 			{
 				StopSong()
 			}
-		case secim == 3:
+		/*case secim == 3:
 			{
 				ShowPlaylists()
 			}
@@ -110,48 +112,50 @@ func MainSearch() {
 		}
 		results = append(results, item)
 	}
-	clearScreen()
-	fmt.Printf("🎵 YouTube Music Sonuçları (%d adet):\n\n", len(results))
-	for i, item := range results {
-		artistInfo := ""
-		if len(item.Artists) > 0 {
-			artistInfo = " - " + item.Artists[0].Name
-		}
-		fmt.Printf("%d. [%s] %s%s\n\n",
-			i+1,
-			formatTime(item.Duration),
-			item.Title,
-			artistInfo,
-		)
-	}
-	fmt.Print("Seçiminiz (Çalmak için numara, İndirmek için 'd<numara>', Ana menü için 0): ")
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
-
-	if input == "0" {
+	for {
 		clearScreen()
-		return
-	}
+		fmt.Printf("🎵 YouTube Music Sonuçları (%d adet):\n\n", len(results))
+		for i, item := range results {
+			artistInfo := ""
+			if len(item.Artists) > 0 {
+				artistInfo = " - " + item.Artists[0].Name
+			}
+			fmt.Printf("%d. [%s] %s%s\n\n",
+				i+1,
+				formatTime(item.Duration),
+				item.Title,
+				artistInfo,
+			)
+		}
+		fmt.Print("Seçiminiz (Çalmak için numara, İndirmek için 'd<numara>', Ana menü için 0): ")
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
 
-	if strings.HasPrefix(input, "d") {
-		numStr := strings.TrimPrefix(input, "d")
-		num, err := strconv.Atoi(numStr)
-		if err != nil || num < 1 || num > len(results) {
-			fmt.Println("Geçersiz numara!")
+		if input == "0" {
+			clearScreen()
 			return
 		}
-		selected := results[num-1]
-		downloadSong(selected.URL, selected.Title)
-	} else {
-		num, err := strconv.Atoi(input)
-		if err != nil || num < 1 || num > len(results) {
-			fmt.Println("Geçersiz numara!")
-			return
-		}
-		selected := results[num-1]
-		playSong(selected.URL, selected.Title)
-	}
 
+		if strings.HasPrefix(input, "d") {
+			numStr := strings.TrimPrefix(input, "d")
+			num, err := strconv.Atoi(numStr)
+			if err != nil || num < 1 || num > len(results) {
+				fmt.Println("Geçersiz numara!")
+				continue
+			}
+			selected := results[num-1]
+			downloadSong(selected.URL, selected.Title)
+		} else {
+			num, err := strconv.Atoi(input)
+			if err != nil || num < 1 || num > len(results) {
+				fmt.Println("Geçersiz numara!")
+				continue
+			}
+			selected := results[num-1]
+			playSong(selected.URL, selected.Title)
+		}
+
+	}
 }
 
 func formatTime(seconds int) string {
@@ -161,7 +165,38 @@ func formatTime(seconds int) string {
 }
 
 func playSong(url string, title string) {
+	clearScreen()
+	fmt.Printf("🎧 Çalınıyor: %s\n", title)
+	if mpvProcess != nil {
+		mpvProcess.Kill()
+	}
 
+	cmd := exec.Command("mpv",
+		"--no-video",
+		"--ytdl-format=bestaudio",
+		"--no-terminal",
+		"--quiet",
+		url,
+	)
+
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("Oynatma hatası: %v\n", err)
+		return
+	}
+
+	mpvProcess = cmd.Process
+
+	// Şarkı bitene kadar bekle
+	if err := cmd.Wait(); err != nil {
+		fmt.Printf("Oynatma hatası: %v\n", err)
+	}
+
+	clearScreen() // Şarkı bitince ekranı temizle
+}
+func StopSong() {
+	if mpvProcess != nil {
+		mpvProcess.Kill()
+	}
 }
 
 func downloadSong(url string, title string) {
