@@ -24,8 +24,9 @@ type SearchResults struct {
 var mpvProcess *os.Process
 
 func main() {
-	clearScreen()
+
 	for {
+		clearScreen()
 		showMainMenu()
 		fmt.Println("\nSeçiminizi yapınız: ")
 		var secim int
