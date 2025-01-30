@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -31,7 +32,7 @@ func downloadSong(url string, title string) {
 			return
 		}
 		clearScreen()
-		fmt.Printf("📥 %s İndiriliyor...\n", title) // println yerine printf
+		fmt.Printf("📥 %s İndiriliyor...\n", title)
 		cmd := exec.Command("yt-dlp", "-x", "--audio-format", "mp3", url)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -58,7 +59,7 @@ func downloadSong(url string, title string) {
 			fmt.Println("Dizine girilemedi:", err)
 			return
 		}
-		DownToPlaylist(url, title)
+		DownToPlaylist(url, title, originalDir)
 		err = os.Chdir(originalDir)
 		if err != nil {
 			fmt.Println("Dizin değiştirilemedi:", err)
@@ -73,7 +74,7 @@ func downloadSong(url string, title string) {
 
 }
 
-func DownToPlaylist(url string, title string) {
+func DownToPlaylist(url string, title string, originalDir string) {
 	clearScreen()
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("0. Önceki Sayfaya Geri Dön")
@@ -88,7 +89,7 @@ func DownToPlaylist(url string, title string) {
 	case "0":
 		return
 	case "1":
-		ShowPlToDown(url, title)
+		ShowPlToDown(url, title, originalDir)
 	case "2":
 		fmt.Println("Yeni playlist adı: ")
 		playlistName, _ := reader.ReadString('\n')
@@ -119,7 +120,36 @@ func DownToPlaylist(url string, title string) {
 			return
 		}
 
-		fmt.Println("✅ İndirme tamamlandı!")
+		files, err := os.ReadDir(".")
+		if err != nil {
+			fmt.Println("Dosyalar okunamadı:", err)
+			return
+		}
+
+		var mp3File string
+		for _, file := range files {
+			if strings.HasSuffix(file.Name(), ".mp3") {
+				mp3File = file.Name()
+				break
+			}
+		}
+
+		if mp3File != "" {
+			targetPath := filepath.Join(originalDir, "Songs", mp3File)
+
+			// Dosya zaten var mı kontrol et
+			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+				// Hard link oluştur
+				err = os.Link(mp3File, targetPath)
+				if err != nil {
+					fmt.Printf("❌ Hard link oluşturulamadı: %v\n", err)
+				} else {
+					fmt.Printf("✅ %s, Songs'a hard link olarak eklendi!\n", mp3File)
+				}
+			} else {
+				fmt.Printf("ℹ️ %s zaten Songs klasöründe mevcut\n", mp3File)
+			}
+		}
 
 		err = os.Chdir(originDir)
 		if err != nil {

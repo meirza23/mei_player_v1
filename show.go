@@ -114,7 +114,7 @@ func ShowPlaylists() {
 	}
 }
 
-func ShowPlToDown(url string, title string) {
+func ShowPlToDown(url string, title string, originalDir string) {
 	playlists, err := os.ReadDir(".")
 	if err != nil {
 		fmt.Println("Dizin okunamadı: ", err)
@@ -167,6 +167,37 @@ func ShowPlToDown(url string, title string) {
 			if err != nil {
 				fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
 				return
+			}
+
+			files, err := os.ReadDir(".")
+			if err != nil {
+				fmt.Println("Dosyalar okunamadı:", err)
+				return
+			}
+
+			var mp3File string
+			for _, file := range files {
+				if strings.HasSuffix(file.Name(), ".mp3") {
+					mp3File = file.Name()
+					break
+				}
+			}
+
+			if mp3File != "" {
+				targetPath := filepath.Join(originalDir, "Songs", mp3File)
+
+				// Dosya zaten var mı kontrol et
+				if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+					// Hard link oluştur
+					err = os.Link(mp3File, targetPath)
+					if err != nil {
+						fmt.Printf("❌ Hard link oluşturulamadı: %v\n", err)
+					} else {
+						fmt.Printf("✅ %s, Songs'a hard link olarak eklendi!\n", mp3File)
+					}
+				} else {
+					fmt.Printf("ℹ️ %s zaten Songs klasöründe mevcut\n", mp3File)
+				}
 			}
 
 			fmt.Println("✅ İndirme tamamlandı!")
