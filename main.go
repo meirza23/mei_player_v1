@@ -154,10 +154,24 @@ func main() {
 			{
 				MainSearch()
 			}
-		/*case secim == 2:
-		{
-			ShowPlaylists()
-		}*/
+		case secim == 2:
+			{
+				originalDir, err := os.Getwd()
+				if err != nil {
+					fmt.Println("Dizin alınamadı:", err)
+					return
+				}
+				err = os.Chdir("./Playlists")
+				if err != nil {
+					fmt.Println("Dizine girilemedi: ", err)
+					return
+				}
+				ShowPlaylists()
+				err = os.Chdir(originalDir)
+				if err != nil {
+					fmt.Println("Dizin değiştirilemedi:", err)
+				}
+			}
 		case secim == 3:
 			{
 				originalDir, err := os.Getwd()

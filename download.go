@@ -58,13 +58,13 @@ func downloadSong(url string, title string) {
 			return
 		}
 
-		fmt.Println("Yeni bir playlist oluşturmak ister misin(E/H):\n")
+		fmt.Println("Yeni bir playlist oluşturmak ister misin(E/H):")
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
 		input = strings.ToLower(input)
 		switch input {
 		case "e":
-			fmt.Println("Oluşturucağınız playlistin adını giriniz: ")
+			fmt.Println("\nOluşturucağınız playlistin adını giriniz: ")
 			input, _ := reader.ReadString('\n')
 			err := os.Mkdir(input, 0755)
 			if err != nil {
