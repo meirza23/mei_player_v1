@@ -12,7 +12,7 @@ import (
 func downloadSong(url string, title string) {
 	reader := bufio.NewReader(os.Stdin)
 	clearScreen()
-	fmt.Print("\nŞarkıyı Playliste eklemek ister misiniz(E/H)?,Geri dönmek için '0'")
+	fmt.Print("\nŞarkıyı Playliste eklemek ister misiniz(E/H)?,Geri dönmek için '0'\n")
 
 	input, _ := reader.ReadString('\n')
 	input = strings.ToLower(strings.TrimSpace(input))
@@ -91,7 +91,41 @@ func DownToPlaylist(url string, title string) {
 		ShowPlToDown(url, title)
 	case "2":
 		fmt.Println("Yeni playlist adı: ")
+		playlistName, _ := reader.ReadString('\n')
+		playlist := strings.TrimSpace(playlistName)
 
+		if playlist == "" {
+			fmt.Println("❌ Geçersiz playlist adı!")
+			return
+		}
+
+		err := os.Mkdir(playlist, 0755)
+		if err != nil {
+			fmt.Println("Playlist oluşturulamadı: ", err)
+		}
+		originDir, _ := os.Getwd()
+		err = os.Chdir(playlist)
+		if err != nil {
+			fmt.Println("Dizine girilemedi: ", err)
+			return
+		}
+
+		clearScreen()
+		fmt.Printf("📥 %s playlistine %s şarkısı indiriliyor...\n", playlist, title)
+		cmd := exec.Command("yt-dlp", "-x", "--audio-format", "mp3", url)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("İndirme hatası: %v\nÇıktı: %s\n", err, string(output))
+			return
+		}
+
+		fmt.Println("✅ İndirme tamamlandı!")
+
+		err = os.Chdir(originDir)
+		if err != nil {
+			fmt.Println("Orijinal dizine dönülemedi: ", err)
+			return
+		}
 	default:
 		fmt.Println("Geçersiz Seçim!")
 	}
