@@ -11,7 +11,8 @@ import (
 
 func downloadSong(url string, title string) {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Şarkıyı Playliste eklemek ister misiniz(E/H)? ")
+	clearScreen()
+	fmt.Print("\nŞarkıyı Playliste eklemek ister misiniz(E/H)?,Geri dönmek için '0'")
 
 	input, _ := reader.ReadString('\n')
 	input = strings.ToLower(strings.TrimSpace(input))
@@ -29,7 +30,7 @@ func downloadSong(url string, title string) {
 			fmt.Println("Dizine girilemedi:", err)
 			return
 		}
-
+		clearScreen()
 		fmt.Printf("📥 %s İndiriliyor...\n", title) // println yerine printf
 		cmd := exec.Command("yt-dlp", "-x", "--audio-format", "mp3", url)
 		output, err := cmd.CombinedOutput()
@@ -57,31 +58,41 @@ func downloadSong(url string, title string) {
 			fmt.Println("Dizine girilemedi:", err)
 			return
 		}
-
-		fmt.Println("Yeni bir playlist oluşturmak ister misin(E/H):")
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-		input = strings.ToLower(input)
-		switch input {
-		case "e":
-			fmt.Println("\nOluşturucağınız playlistin adını giriniz: ")
-			input, _ := reader.ReadString('\n')
-			err := os.Mkdir(input, 0755)
-			if err != nil {
-				fmt.Println("Playlist oluşturulamadı: ", err)
-				return
-			}
-			ShowPlaylists()
-		case "h":
-		}
+		DownToPlaylist(url, title)
 		err = os.Chdir(originalDir)
 		if err != nil {
 			fmt.Println("Dizin değiştirilemedi:", err)
 		}
+	case "0":
+		return
 	default:
-		fmt.Println("❌ Geçersiz seçim! Lütfen sadece E veya H giriniz.")
+		fmt.Println("❌ Geçersiz seçim! Lütfen sadece E , H veya 0 giriniz.")
 		time.Sleep(1 * time.Second)
 		return
 	}
 
+}
+
+func DownToPlaylist(url string, title string) {
+	clearScreen()
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("0. Önceki Sayfaya Geri Dön")
+	fmt.Println("1. Varolan Playlist'e Ekle")
+	fmt.Println("2. Yeni Playlist Oluştur")
+	fmt.Print("Seçiminiz: ")
+
+	input, _ := reader.ReadString('\n')
+	choice := strings.TrimSpace(input)
+
+	switch choice {
+	case "0":
+		return
+	case "1":
+		ShowPlToDown(url, title)
+	case "2":
+		fmt.Println("Yeni playlist adı: ")
+
+	default:
+		fmt.Println("Geçersiz Seçim!")
+	}
 }
