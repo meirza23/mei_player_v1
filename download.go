@@ -137,14 +137,11 @@ func DownToPlaylist(url string, title string, originalDir string) {
 		if mp3File != "" {
 			targetPath := filepath.Join(originalDir, "Songs", mp3File)
 
-			// Dosya zaten var mı kontrol et
 			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-				// Hard link oluştur
+
 				err = os.Link(mp3File, targetPath)
 				if err != nil {
 					fmt.Printf("❌ Hard link oluşturulamadı: %v\n", err)
-				} else {
-					fmt.Printf("✅ %s, Songs'a hard link olarak eklendi!\n", mp3File)
 				}
 			} else {
 				fmt.Printf("ℹ️ %s zaten Songs klasöründe mevcut\n", mp3File)
