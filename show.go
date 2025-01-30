@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -89,13 +90,25 @@ func ShowPlaylists() {
 
 		selected := playlists[choice-1]
 		if selected.IsDir() {
-			err := os.Chdir(selected.Name())
-			if err != nil {
-				fmt.Println("Playlist açılamadı: ", err)
-				time.Sleep(1 * time.Second)
+
+			currentDir, _ := os.Getwd()
+			targetPath := filepath.Join(currentDir, selected.Name())
+
+			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+				fmt.Printf("❌ Dizin bulunamadı: %s\n", targetPath)
+				time.Sleep(2 * time.Second)
 				continue
 			}
+
+			if err := os.Chdir(targetPath); err != nil {
+				fmt.Printf("❌ Dizin açılamadı [%s]: %v\n", targetPath, err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+
 			ShowSongs()
+
+			os.Chdir("..")
 		}
 	}
 
