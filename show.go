@@ -161,7 +161,7 @@ func ShowPlToDown(url string, title string) {
 			}
 
 			clearScreen()
-			fmt.Printf("📥 %s İndiriliyor...\n", title) // println yerine printf
+			fmt.Printf("📥 %s İndiriliyor...\n", title)
 			cmd := exec.Command("yt-dlp", "-x", "--audio-format", "mp3", url)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
