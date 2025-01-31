@@ -8,88 +8,97 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
-func MainSearch() {
-
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Aranacak şarkı: ")
-	songName, _ := reader.ReadString('\n')
-	songName = strings.TrimSpace(songName)
-
-	cmd := exec.Command(
-		"yt-dlp",
-		"--dump-json",
-		"--default-search", "ytmsearch",
-		"ytsearch5:"+songName,
-	)
-
+func searchPython(query string) ([]Song, error) {
+	cmd := exec.Command("python3", "ytmusic_search.py", query)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Hata oluştu: %v\nÇıktı: %s\n", err, string(output))
-		return
+		return nil, fmt.Errorf("python hatası: %v", string(output))
 	}
 
-	var results []SearchResults
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		var item SearchResults
-		if err := json.Unmarshal([]byte(line), &item); err != nil {
-			continue
-		}
-		results = append(results, item)
+	// Önce genel hata kontrolü
+	var errorResp struct {
+		Error string `json:"error"`
 	}
-	for {
-		clearScreen()
-		fmt.Printf("🎵 YouTube Music Sonuçları (%d adet):\n\n", len(results))
-		for i, item := range results {
-			artistInfo := ""
-			if len(item.Artists) > 0 {
-				artistInfo = " - " + item.Artists[0].Name
-			}
-			fmt.Printf("%d. [%s] %s%s\n\n",
-				i+1,
-				formatTime(item.Duration),
-				item.Title,
-				artistInfo,
-			)
-		}
-		fmt.Print("Seçiminiz (Çalmak için numara, İndirmek için 'd<numara>', Ana menü için 0):\n")
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-
-		if input == "0" {
-			clearScreen()
-			return
-		}
-
-		if strings.HasPrefix(input, "d") {
-			numStr := strings.TrimPrefix(input, "d")
-			num, err := strconv.Atoi(numStr)
-			if err != nil || num < 1 || num > len(results) {
-				fmt.Println("Geçersiz numara!")
-				continue
-			}
-			selected := results[num-1]
-			downloadSong(selected.URL, selected.Title)
-		} else {
-			num, err := strconv.Atoi(input)
-			if err != nil || num < 1 || num > len(results) {
-				fmt.Println("Geçersiz numara!")
-				continue
-			}
-			selected := results[num-1]
-			playSong(selected.URL, selected.Title)
-		}
-
+	if json.Unmarshal(output, &errorResp) == nil && errorResp.Error != "" {
+		return nil, fmt.Errorf(errorResp.Error)
 	}
+
+	// Normal sonuçları parse et
+	var raw []struct {
+		Title    string   `json:"title"`
+		Artists  []string `json:"artists"`
+		Duration string   `json:"duration"`
+		VideoID  string   `json:"videoId"`
+	}
+
+	if err := json.Unmarshal(output, &raw); err != nil {
+		return nil, fmt.Errorf("json parse hatası: %v", err)
+	}
+
+	var songs []Song
+	for _, item := range raw {
+		songs = append(songs, Song{
+			Title:    item.Title,
+			Artists:  item.Artists,
+			Duration: item.Duration,
+			VideoID:  item.VideoID,
+		})
+	}
+	return songs, nil
 }
 
-func formatTime(seconds int) string {
-	mins := seconds / 60
-	secs := seconds % 60
-	return fmt.Sprintf("%02d:%02d", mins, secs)
+func handleSearchResults(songs []Song) {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		clearScreen()
+		fmt.Println("🔍 Arama Sonuçları:")
+		for i, song := range songs {
+			// Sanatçıları birleştir
+			artists := "Bilinmiyor"
+			if len(song.Artists) > 0 {
+				artists = strings.Join(song.Artists, ", ")
+			}
+			fmt.Printf("%d. %s - %s (%s)\n", i+1, song.Title, artists, song.Duration)
+		}
+
+		fmt.Println("\n0. Geri dön")
+		fmt.Println("Oynatmak için numara girin (örn: 1)")
+		fmt.Println("İndirmek için 'd' + numara girin (örn: d1)")
+		fmt.Print("Seçiminiz: ")
+
+		choice, _ := reader.ReadString('\n')
+		choice = strings.TrimSpace(choice)
+
+		switch {
+		case choice == "0":
+			return
+
+		case strings.HasPrefix(choice, "d"):
+			numStr := strings.TrimPrefix(choice, "d")
+			num, err := strconv.Atoi(numStr)
+			if err != nil || num < 1 || num > len(songs) {
+				fmt.Println("Geçersiz indirme seçimi!")
+				time.Sleep(2 * time.Second)
+				continue
+			}
+			song := songs[num-1]
+			downloadSong(song.VideoID, song.Title)
+			return
+
+		default:
+			num, err := strconv.Atoi(choice)
+			if err != nil || num < 1 || num > len(songs) {
+				fmt.Println("Geçersiz seçim!")
+				time.Sleep(2 * time.Second)
+				continue
+			}
+			song := songs[num-1]
+			playSong(song.VideoID, song.Title)
+			return
+		}
+	}
 }

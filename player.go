@@ -12,6 +12,7 @@ import (
 )
 
 func playSong(url string, title string) {
+	songUrl := fmt.Sprintf("https://www.youtube.com/watch?v=%s", url)
 	clearScreen()
 	fmt.Printf("🎧 Çalınıyor: %s\n", title)
 	fmt.Println("Durdurmak için 's', Devam için 'c', Bitir için 'q'")
@@ -26,7 +27,7 @@ func playSong(url string, title string) {
 		"--ytdl-format=bestaudio",
 		"--input-ipc-server=/tmp/mpv-socket",
 		"--quiet",
-		url,
+		songUrl,
 	)
 
 	// Socket dosyasını temizle

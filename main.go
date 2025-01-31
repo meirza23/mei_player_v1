@@ -1,18 +1,25 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
-type SearchResults struct {
-	Title    string `json:"title"`
-	Duration int    `json:"duration"`
-	Artists  []struct {
-		Name string `json:"name"`
-	} `json:"artists"`
-	URL string `json:"webpage_url"`
+type Song struct {
+	Title    string
+	Artists  []string // Yeni alan eklendi
+	Duration string
+	VideoID  string
+}
+
+var raw []struct {
+	Title    string   `json:"title"`
+	Artists  []string `json:"artists"`
+	Duration string   `json:"duration"`
+	VideoID  string   `json:"videoId"`
 }
 
 var mpvProcess *os.Process
@@ -62,8 +69,21 @@ func main() {
 				os.Exit(0)
 			}
 		case secim == 1:
-			{
-				MainSearch()
+			clearScreen()
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Aramak istediğiniz şarkıyı girin: ")
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+
+			songs, err := searchPython(input)
+			if err != nil {
+				fmt.Printf("Arama hatası: %v\n", err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+
+			if len(songs) > 0 {
+				handleSearchResults(songs)
 			}
 		case secim == 2:
 			{
