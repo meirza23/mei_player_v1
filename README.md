@@ -45,6 +45,7 @@ Mei Player'ı kurmak ve çalıştırmak için:
  go install
  go build
  ./mei_player
+sudo mv mei_player /usr/local/bin/
 ```
 
 ### Ana Menü
